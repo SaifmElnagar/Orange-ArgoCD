@@ -1,4 +1,3 @@
-If you need help creating the README file based on your instructions for ArgoCD, I can help you format it. Here’s a suggested outline for your README:
 
 ---
 
@@ -80,5 +79,5 @@ kubectl create secret generic <secret-name> --from-literal=<key>=<value> -n <nam
 
 ---
 
-Feel free to modify the placeholders (like `<app-name>`, `<repository-url>`, etc.) and any other parts to suit your needs! If you need further adjustments or details, just let me know!
+
 
