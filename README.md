@@ -1,4 +1,3 @@
-
 ---
 
 # ArgoCD Setup and Application Deployment
