@@ -1,82 +1,74 @@
----
-
-# ArgoCD Setup and Application Deployment
-
-## 1. Install ArgoCD
-
-Run the following command to install ArgoCD:
-
+### 1. **Install ArgoCD**
 ```bash
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
-## 2. Ports for ArgoCD Server
-
+### 2. **Ports ArgoCD Server Listens On**
 The `argocd-server` listens on the following ports:
-- **80**: HTTP
-- **443**: HTTPS
+- **HTTP**: 8080
+- **HTTPS**: 443
 
-## 3. Access the ArgoCD UI
+### 3. **Access the ArgoCD UI by Changing Service Type to NodePort**
+To access the ArgoCD UI, update the `argocd-server` service to use NodePort and assign a custom port (32766) for HTTPS.
 
-Convert the ArgoCD Server service from type `ClusterIP` to `NodePort` and specify the node port for HTTPS:
-
+Edit the ArgoCD server service:
 ```bash
-kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 443, "nodePort": 32766}]}}}'
+kubectl -n argocd edit svc argocd-server
 ```
 
-Access the UI at `https://<node-ip>:32766`
-
-## 4. Get Initial Admin Password
-
-Run the following command to decode the initial admin password:
-
-```bash
-kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+Change the `type` from `ClusterIP` to `NodePort`, and add the following line under `ports` for HTTPS:
+```yaml
+type: NodePort
+ports:
+  - name: https
+    port: 443
+    targetPort: 8080
+    nodePort: 32766  # Assign node port 32766 for HTTPS
 ```
 
-## 5. Install ArgoCD CLI
+Save the file, and you will now be able to access the ArgoCD UI at:
+```
+https://<NodeIP>:32766
+```
 
-Run the following commands to install the ArgoCD CLI:
+### 4. **Decode Initial Admin Password**
+By default, the ArgoCD admin password is stored as a base64-encoded secret. To decode and retrieve it, use this command:
+```bash
+kubectl get secret argocd-initial-admin-secret -n argocd -o json | jq .data.password -r | base64 -d
+```
 
+### 5. **Install ArgoCD CLI**
+To install the ArgoCD CLI on Linux, run the following commands:
 ```bash
 curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.4.11/argocd-linux-amd64
 chmod +x /usr/local/bin/argocd
 ```
 
-## 6. Create an ArgoCD Application
+### 6. **Create an ArgoCD Application**
+To create an ArgoCD application that deploys a three-tier application from a GitHub repository, follow these steps:
 
-Using the ArgoCD CLI, create an application that deploys a three-tier application from a GitHub repository containing the YAML manifests:
-
+1. **Login to ArgoCD CLI**
 ```bash
-argocd app create <app-name> \
-  --repo <repository-url> \
-  --path <path-to-yaml> \
-  --dest-server https://kubernetes.default.svc \
-  --dest-namespace <namespace>
+argocd login <NodeIP>:32766 --insecure
 ```
 
-Sync the application:
-
+2. **Create the Application**
 ```bash
-argocd app sync <app-name>
+argocd app create three-tier-app \
+--repo https://github.com/<your-repo>/<three-tier-app-repo>.git \
+--path <path-to-yaml-files> \
+--dest-server https://kubernetes.default.svc \
+--dest-namespace default
 ```
 
-Verify that the service is running in your Kubernetes cluster:
-
+3. **Sync the Application**
 ```bash
-kubectl get svc -n <namespace>
+argocd app sync three-tier-app
 ```
 
-## 7. Managing Secrets
-
-To save secrets that need to be used in the Kubernetes cluster outside of the GitHub repository, consider using Kubernetes Secrets. Create a secret using the following command:
-
+4. **Verify the Application**
+To check if the application is deployed and running in your Kubernetes cluster:
 ```bash
-kubectl create secret generic <secret-name> --from-literal=<key>=<value> -n <namespace>
+kubectl get all -n default
 ```
-
----
-
-
-
